@@ -1,0 +1,22 @@
+{
+  "name": "untitled",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "axios": "^0.21.1",
+    "body-parser": "^1.18.3",
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "dotenv": "^8.2.0",
+    "express": "~4.16.1",
+    "mongodb": "^3.6.6",
+    "morgan": "~1.9.1",
+    "reverso-api": "^2.16.2",
+    "telegraf": "^4.3.0",
+    "telegraf-ratelimit": "^2.0.0",
+    "telegraph": "^0.8.22"
+  }
+}
