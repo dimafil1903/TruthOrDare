@@ -21,7 +21,7 @@ bot.use(async (ctx, next) => {
         if (chat)
             chats.update({id: chat.id}, chat, {upsert: true})
 
-        // console.log(ctx)
+        console.log(ctx.message)
         if (chat && user)
             if (chat.type !== 'private') {
                 const chat_users = db.collection('chat_users')
