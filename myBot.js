@@ -291,16 +291,17 @@ async function nextPlayer(ctx, client) {
     let gameCollection = db.collection("game");
     let game = await gameCollection.findOne(query)
     console.log(game,"next",game.members.length,game.current_player + 1)
+    await gameCollection.update(
+        {id: game.id},
+        {$set: {current_player: game.current_player + 1}}
+    )
     if (game.members.length <= game.current_player + 1)
         await gameCollection.update(
             {id: game.id},
             {$set: {current_player: 0}}
         )
-    else
-        await gameCollection.update(
-            {id: game.id},
-            {$set: {current_player: game.current_player + 1}}
-        )
+
+
     console.log(game.current_player)
     await askTruthOrAction(ctx, client)
 }
