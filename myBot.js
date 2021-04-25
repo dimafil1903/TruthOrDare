@@ -90,11 +90,10 @@ bot.on('callback_query', async (ctx) => {
         await ctx.answerCbQuery();
         await ctx.deleteMessage()
         connection.then(async client => {
-            await SendQuestion(ctx, client,type)
+            await SendQuestion(ctx, client, type)
         })
     } else if (parsedData[0] === 'done') {
-        await ctx.deleteMessage()
-
+       await ctx.editMessageReplyMarkup({})
         connection.then(async client => {
             await nextPlayer(ctx, client)
         })
@@ -102,11 +101,9 @@ bot.on('callback_query', async (ctx) => {
         await ctx.answerCbQuery();
 
 
-
-    }else if (parsedData[0] === 'gameStart') {
+    } else if (parsedData[0] === 'gameStart') {
         await startGame(ctx)
         await ctx.answerCbQuery();
-
 
 
     }
@@ -122,7 +119,7 @@ bot.command('newGame', async ctx => {
     await connection.then(async client => {
         const db = client.db('tg_bot')
         let gameCollection = db.collection("game");
-
+        deleteMessages(ctx)
         await gameCollection.deleteOne({chat_id: ctx.chat.id})
 
     })
@@ -191,41 +188,27 @@ bot.command('players', ctx => {
 bot.command('join', ctx => {
     if (ctx.chat.type === 'private')
         return ctx.reply("Ой, играть можно только в групповом чате")
-     chooseGender(ctx)
+    chooseGender(ctx)
 
 })
-bot.command('leave', async ctx => {
-
+bot.on('left_chat_participant', async ctx => {
+    // 'message' is a Telegram Message
 
     connection.then(async client => {
 
         if (ctx.chat.type === 'private')
             return saveBotMessage(await ctx.reply("Эта команда только для группового чата"))
+        await leave(ctx, client)
 
-        const db = client.db('tg_bot')
-        let gameCollection = db.collection("game");
-        let query = {
-            chat_id: ctx.chat.id,
-            'members.id': ctx.from.id,
-        };
+    })
+});
+bot.command('leave', async ctx => {
 
-        if (await gameCollection.findOne(query)) {
-            gameCollection.updateOne(
-                query,
-                {$pull: {'members': {id: ctx.from.id}}}
-            )
-            saveBotMessage(await ctx.reply("Вы вышли из игры", {reply_to_message_id: ctx.message.message_id}))
-        } else
-            saveBotMessage(await ctx.reply("Вы не в игре", {reply_to_message_id: ctx.message.message_id}))
+    connection.then(async client => {
 
-        gameCollection.remove({
-            chat_id: ctx.chat.id,
-            members: {$size: 0},
-        }).then(async res => {
-            if (res.result.n)
-                saveBotMessage(await ctx.reply("Игра закончилась. Все участники вышли"))
-
-        })
+        if (ctx.chat.type === 'private')
+            return saveBotMessage(await ctx.reply("Эта команда только для группового чата"))
+        await leave(ctx, client)
 
     })
 
@@ -247,20 +230,57 @@ async function askTruthOrAction(ctx, client) {
     let gameCollection = db.collection("game");
     let game = await gameCollection.findOne(query)
     console.log(game.members[game.current_player].id)
-     let user=await db.collection("users").findOne({
+    let user = await db.collection("users").findOne({
         id: {
             $in: [game.members[game.current_player].id]
-            }
+        }
 
     })
 
     const TruthOrActionKeyboard = [[
         {text: 'Правда️', callback_data: 'answer_truth_' + ctx.chat.id + '_' + game.members[game.current_player].id},
-        {text: '️Действие️', callback_data: 'answer_action_' + +ctx.chat.id + '_' + game.members[game.current_player].id}
+        {
+            text: '️Действие️',
+            callback_data: 'answer_action_' + +ctx.chat.id + '_' + game.members[game.current_player].id
+        }
     ]];
     return saveBotMessage(await ctx.reply(
         `[${user.first_name}](tg://user?id=${game.members[game.current_player].id}), Правда или Действие?`,
         {parse_mode: "markdown", reply_markup: JSON.stringify({inline_keyboard: TruthOrActionKeyboard})}))
+}
+
+async function leave(ctx, client) {
+    const db = client.db('tg_bot')
+    let gameCollection = db.collection("game");
+    let queryChat = {chat_id: ctx.chat.id};
+    let game = await gameCollection.findOne(queryChat)
+    let query = {
+        chat_id: ctx.chat.id,
+        'members.id': ctx.from.id,
+    };
+    if (game.members[game.current_player] && game.members[game.current_player].id === ctx.from.id) {
+        await nextPlayer(ctx, client)
+    }
+    if (await gameCollection.findOne(query)) {
+        gameCollection.updateOne(
+            query,
+            {$pull: {'members': {id: ctx.from.id}}}
+        )
+        saveBotMessage(await ctx.reply("Вы вышли из игры", {reply_to_message_id: ctx.message.message_id}))
+    } else
+        saveBotMessage(await ctx.reply("Вы не в игре", {reply_to_message_id: ctx.message.message_id}))
+
+
+    gameCollection.remove({
+        chat_id: ctx.chat.id,
+        members: {$size: 1},
+    }).then(async res => {
+        if (res.result.n) {
+            saveBotMessage(await ctx.reply("Игра закончилась. Все участники вышли"))
+            deleteMessages(ctx)
+        }
+    })
+
 }
 
 async function nextPlayer(ctx, client) {
@@ -283,7 +303,7 @@ async function nextPlayer(ctx, client) {
     await askTruthOrAction(ctx, client)
 }
 
-async function SendQuestion(ctx, client,type) {
+async function SendQuestion(ctx, client, type) {
     const chat = ctx.chat
     const db = client.db('tg_bot')
 
@@ -299,7 +319,6 @@ async function SendQuestion(ctx, client,type) {
     }
 
     let this_player = game.members.find(isThisId)
-
 
 
     let question
@@ -403,6 +422,7 @@ function random_item(items) {
 
 function startGame(ctx) {
     connection.then(async client => {
+
         const chat = ctx.chat
         const db = client.db('tg_bot')
         let query = {chat_id: chat.id};
@@ -412,7 +432,7 @@ function startGame(ctx) {
             return ctx.reply("Игра не зарегистрирована. Начни новую игру командой /newGame");
 
         if (game.members.length < 2) {
-         await   gameCollection.update(
+            await gameCollection.update(
                 query,
                 {
                     $set:
@@ -425,9 +445,9 @@ function startGame(ctx) {
 
         }
         if (game.status)
-        return ctx.reply("Игра уже запущена");
+            return ctx.reply("Игра уже запущена");
         let current_player = 0
-      await  gameCollection.update(
+        await gameCollection.update(
             query,
             {
                 $set:
@@ -437,7 +457,7 @@ function startGame(ctx) {
                     }
             }
         )
-       await askTruthOrAction(ctx, client)
+        await askTruthOrAction(ctx, client)
     })
 }
 
@@ -448,7 +468,7 @@ async function join(ctx) {
 
         if (userExist === false) return userExist
 
-        await ctx.telegram.sendMessage(
+        saveBotMessage(await ctx.telegram.sendMessage(
             ctx.chat.id,
             'Присоединяйся к игре \n"Правда или Действие"',
             {
@@ -458,9 +478,9 @@ async function join(ctx) {
                         {text: 'Присоединиться ✅', callback_data: 'newPlayer'},
 
 
-                    ],[{text: 'Начать игру 🎲', callback_data: 'gameStart'},]]
+                    ], [{text: 'Начать игру 🎲', callback_data: 'gameStart'},]]
                 })
-            })
+            }))
 
     })
 }
@@ -489,18 +509,37 @@ function chooseGender(ctx) {
             {text: '️Я парень 🙎‍♂️', callback_data: 'join_male_' + +ctx.chat.id + '_' + ctx.from.id}
         ]];
         return saveBotMessage(await ctx.reply(
-            'Отлично,'+` [${ctx.from.first_name}](tg://user?id=${ctx.from.id})`+' скажи мне кто ты, и я добавлю тебя в игру',
-            {reply_markup: JSON.stringify({inline_keyboard: GenderKeyboard}),parse_mode:"markdown"}))
+            'Отлично,' + ` [${ctx.from.first_name}](tg://user?id=${ctx.from.id})` + ', скажи мне кто ты, и я добавлю тебя в игру',
+            {reply_markup: JSON.stringify({inline_keyboard: GenderKeyboard}), parse_mode: "markdown"}))
     })
 }
 
 function saveBotMessage(reply) {
+
+    console.log(reply)
     connection.then(async client => {
         const db = client.db('tg_bot')
         await db.collection("bot_messages").insertOne({
             chat_id: reply.chat.id,
             message_id: reply.message_id
         });
+    })
+}
+
+function deleteMessages(ctx) {
+
+    connection.then(async client => {
+
+        const db = client.db('tg_bot')
+        let query = {chat_id: ctx.chat.id};
+        let bot_messages = db.collection("bot_messages");
+
+
+        await bot_messages.find(query).forEach(msg => {
+            console.log(msg)
+            ctx.deleteMessage(msg.message_id);
+        })
+         bot_messages.remove(query)
     })
 }
 
