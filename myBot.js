@@ -285,11 +285,12 @@ async function leave(ctx, client) {
 }
 
 async function nextPlayer(ctx, client) {
+
     const db = client.db('tg_bot')
     let query = {chat_id: ctx.chat.id};
     let gameCollection = db.collection("game");
     let game = await gameCollection.findOne(query)
-    console.log(game)
+    console.log(game,"next",game.members.length,game.current_player + 1)
     if (game.members.length <= game.current_player + 1)
         await gameCollection.update(
             {id: game.id},
