@@ -125,6 +125,25 @@ bot.command('newgame', async ctx => {
     })
     await join(ctx)
 })
+bot.command('sendall', async ctx => {
+
+
+        if (ctx.from.id=='481629579'){
+            connection.then(async client => {
+                const db = client.db('tg_bot')
+
+               let text= ctx.message.text.replace('/sendall ', '')
+                console.log(text)
+                let chatCol = db.collection("chats");
+                let chats = chatCol.find({type: 'supergroup'}).forEach(f=>{
+                    ctx.telegram.sendMessage(f.id,text)
+                    // console.log(f);
+                })
+                    })
+
+    }
+
+})
 bot.command('players', ctx => {
     if (ctx.chat.type === 'private')
         return ctx.reply("Эта команда только для группового чата")

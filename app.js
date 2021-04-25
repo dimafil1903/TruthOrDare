@@ -3,6 +3,8 @@ var express = require('express');
 
 const {Telegraf} = require('telegraf')
 const rateLimit = require('telegraf-ratelimit')
+const commandParts = require('telegraf-command-parts');
+
 const limitConfig = {
     window: 1000,
     limit: 30,
@@ -28,6 +30,7 @@ bot.telegram.setWebhook('https://02249c89ca9a.ngrok.io/hook')
 
 app.use(bot.webhookCallback('/hook'))
 bot.use(rateLimit(limitConfig))
+app.use(commandParts());
 
 bot.use(MyBot)
 
