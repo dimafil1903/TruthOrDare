@@ -260,26 +260,27 @@ async function leave(ctx, client) {
     };
     if (game.members[game.current_player] && game.members[game.current_player].id === ctx.from.id) {
         await nextPlayer(ctx, client)
+        if (await gameCollection.findOne(query)) {
+            gameCollection.updateOne(
+                query,
+                {$pull: {'members': {id: ctx.from.id}}}
+            )
+            saveBotMessage(await ctx.reply("Вы вышли из игры", {reply_to_message_id: ctx.message.message_id}))
+        } else
+            saveBotMessage(await ctx.reply("Вы не в игре", {reply_to_message_id: ctx.message.message_id}))
+
+
+        gameCollection.remove({
+            chat_id: ctx.chat.id,
+            members: {$size: 1},
+        }).then(async res => {
+            if (res.result.n) {
+                saveBotMessage(await ctx.reply("Игра закончилась. Все участники вышли"))
+                deleteMessages(ctx)
+            }
+        })
     }
-    if (await gameCollection.findOne(query)) {
-        gameCollection.updateOne(
-            query,
-            {$pull: {'members': {id: ctx.from.id}}}
-        )
-        saveBotMessage(await ctx.reply("Вы вышли из игры", {reply_to_message_id: ctx.message.message_id}))
-    } else
-        saveBotMessage(await ctx.reply("Вы не в игре", {reply_to_message_id: ctx.message.message_id}))
 
-
-    gameCollection.remove({
-        chat_id: ctx.chat.id,
-        members: {$size: 1},
-    }).then(async res => {
-        if (res.result.n) {
-            saveBotMessage(await ctx.reply("Игра закончилась. Все участники вышли"))
-            deleteMessages(ctx)
-        }
-    })
 
 }
 
