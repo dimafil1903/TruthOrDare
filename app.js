@@ -25,7 +25,7 @@ app.use('/users', usersRouter);
 
 console.log(process.env.apikey)
 
-bot.telegram.setWebhook('https://02249c89ca9a.ngrok.io/hook')
+bot.telegram.setWebhook(process.env.app_url)
 
 
 app.use(bot.webhookCallback('/hook'))
