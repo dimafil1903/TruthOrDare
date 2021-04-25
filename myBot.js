@@ -113,7 +113,7 @@ bot.on('callback_query', async (ctx) => {
 // bot.help((ctx) => ctx.reply('Send me a sticker'))
 // bot.on('sticker', (ctx) => ctx.reply('👍'))
 // bot.hears('hi', (ctx) => ctx.reply('Hey there'))
-bot.command('newGame', async ctx => {
+bot.command('newgame', async ctx => {
     if (ctx.chat.type === 'private')
         return ctx.reply("Sorry but u need group chat")
     await connection.then(async client => {
@@ -214,7 +214,7 @@ bot.command('leave', async ctx => {
 
 
 })
-bot.command('startGame', async ctx => {
+bot.command('startgame', async ctx => {
     if (ctx.chat.type === 'private')
         return ctx.reply("Ой, играть можно только в групповом чате")
 
