@@ -94,7 +94,7 @@ bot.on('callback_query', async (ctx) => {
         })
     } else if (parsedData[0] === 'done') {
        await ctx.editMessageReplyMarkup({})
-        connection.then(async client => {
+       await connection.then(async client => {
             await nextPlayer(ctx, client)
         })
 
@@ -229,7 +229,8 @@ async function askTruthOrAction(ctx, client) {
 
     let gameCollection = db.collection("game");
     let game = await gameCollection.findOne(query)
-    console.log(game.members[game.current_player].id)
+
+    console.log("current id",game.members[game.current_player].id)
     let user = await db.collection("users").findOne({
         id: {
             $in: [game.members[game.current_player].id]
@@ -290,16 +291,19 @@ async function nextPlayer(ctx, client) {
     let query = {chat_id: ctx.chat.id};
     let gameCollection = db.collection("game");
     let game = await gameCollection.findOne(query)
-    console.log(game,"next",game.members.length,game.current_player + 1)
-    await gameCollection.update(
-        {id: game.id},
-        {$set: {current_player: game.current_player + 1}}
-    )
+    console.log(game,"next",game.current_player)
+
     if (game.members.length <= game.current_player + 1)
-        await gameCollection.update(
-            {id: game.id},
+        await gameCollection.updateOne(
+            {chat_id: game.chat_id},
             {$set: {current_player: 0}}
         )
+    else {
+        await gameCollection.updateOne(
+            {chat_id: game.chat_id},
+            {$inc: { current_player: 1 }}
+        )
+    }
 
 
     console.log(game.current_player)
